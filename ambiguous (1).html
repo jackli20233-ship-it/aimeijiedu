@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>暧昧解码 — Ta到底什么意思</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=Noto+Sans+SC:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+:root {
+  --ink: #1a1118;
+  --paper: #fdf8f2;
+  --rose: #c8516a;
+  --rose-light: #f5dde2;
+  --rose-pale: #fdf0f2;
+  --gold: #c9a84c;
+  --muted: #8a7a82;
+  --border: #e8dde2;
+}
+
+html, body {
+  height: 100%;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: 'Noto Sans SC', sans-serif;
+  overflow-x: hidden;
+}
+
+/* ── 页面容器 ── */
+.screen {
+  min-height: 100vh;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  padding: 0 0 60px;
+  animation: fadeUp .45s ease both;
+}
+.screen.active { display: flex; }
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── 顶部装饰 ── */
+.hero-band {
+  width: 100%;
+  background: var(--ink);
+  color: var(--paper);
+  padding: 48px 28px 36px;
+  position: relative;
+  overflow: hidden;
+}
+.hero-band::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 80% 60% at 110% 0%, #6b2f3e 0%, transparent 60%);
+  pointer-events: none;
+}
+.hero-band .eyebrow {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 11px;
+  letter-spacing: 4px;
+  color: var(--gold);
+  margin-bottom: 14px;
+  position: relative;
+}
+.hero-band h1 {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 1.2;
+  position: relative;
+}
+.hero-band h1 em {
+  font-style: normal;
+  color: var(--rose);
+}
+.hero-band .sub {
+  margin-top: 12px;
+  font-size: 13px;
+  color: rgba(253,248,242,.55);
+  font-weight: 300;
+  line-height: 1.7;
+  position: relative;
+}
+.deco-line {
+  width: 36px;
+  height: 1px;
+  background: var(--gold);
+  margin: 20px 0 0;
+  position: relative;
+}
+
+/* ── 卡片 ── */
+.card {
+  width: calc(100% - 40px);
+  max-width: 480px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 24px 22px;
+  margin-top: 20px;
+}
+
+/* ── 输入区 ── */
+.input-label {
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 10px;
+  letter-spacing: .3px;
+}
+.input-label strong { color: var(--ink); font-weight: 500; }
+
+textarea {
+  width: 100%;
+  min-height: 130px;
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+  font-family: 'Noto Sans SC', sans-serif;
+  font-size: 14px;
+  color: var(--ink);
+  background: var(--rose-pale);
+  resize: none;
+  outline: none;
+  line-height: 1.75;
+  transition: border-color .2s;
+}
+textarea:focus { border-color: var(--rose); }
+textarea::placeholder { color: #c4b0b8; }
+
+.char-count {
+  text-align: right;
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 6px;
+}
+
+/* ── 按钮 ── */
+.btn-primary {
+  display: block;
+  width: 100%;
+  padding: 16px;
+  background: var(--ink);
+  color: var(--paper);
+  border: none;
+  border-radius: 12px;
+  font-family: 'Noto Sans SC', sans-serif;
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: 1px;
+  cursor: pointer;
+  margin-top: 16px;
+  position: relative;
+  overflow: hidden;
+  transition: background .2s, transform .1s;
+}
+.btn-primary:active { transform: scale(.98); }
+.btn-primary.rose { background: var(--rose); }
+
+.btn-ghost {
+  display: block;
+  width: 100%;
+  padding: 14px;
+  background: transparent;
+  color: var(--rose);
+  border: 1.5px solid var(--rose);
+  border-radius: 12px;
+  font-family: 'Noto Sans SC', sans-serif;
+  font-size: 14px;
+  cursor: pointer;
+  margin-top: 12px;
+  transition: background .2s;
+}
+.btn-ghost:active { background: var(--rose-pale); }
+
+/* ── 加载动画 ── */
+#screen-loading {
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+}
+.loading-inner { text-align: center; }
+.pulse-ring {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 2px solid var(--rose-light);
+  border-top-color: var(--rose);
+  animation: spin 1s linear infinite;
+  margin: 0 auto 24px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-text {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 15px;
+  color: var(--muted);
+}
+.loading-sub {
+  font-size: 12px;
+  color: #c4b0b8;
+  margin-top: 8px;
+}
+
+/* ── 结果页 ── */
+.result-tag {
+  display: inline-block;
+  background: var(--rose-light);
+  color: var(--rose);
+  font-size: 11px;
+  letter-spacing: 2px;
+  padding: 4px 12px;
+  border-radius: 20px;
+  margin-bottom: 14px;
+  font-weight: 500;
+}
+.result-verdict {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--ink);
+  margin-bottom: 16px;
+}
+.result-verdict .highlight { color: var(--rose); }
+
+.result-body {
+  font-size: 14px;
+  line-height: 1.9;
+  color: #4a3840;
+}
+
+/* ── 信号条 ── */
+.signal-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+.signal-row:last-child { border-bottom: none; }
+.signal-label { color: var(--muted); }
+.signal-val { font-weight: 500; color: var(--ink); }
+.signal-val.warm { color: var(--rose); }
+.signal-val.cool { color: #5a80c8; }
+.signal-val.neutral { color: var(--muted); }
+
+/* ── 锁定区 ── */
+.lock-card {
+  width: calc(100% - 40px);
+  max-width: 480px;
+  margin-top: 16px;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+.lock-header {
+  background: var(--ink);
+  color: var(--paper);
+  padding: 20px 22px 16px;
+}
+.lock-header .lock-icon {
+  font-size: 20px;
+  margin-bottom: 8px;
+}
+.lock-header h3 {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 17px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.lock-header p {
+  font-size: 12px;
+  color: rgba(253,248,242,.5);
+  line-height: 1.6;
+}
+.lock-body {
+  background: #fff;
+  padding: 20px 22px;
+}
+.lock-preview {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.7;
+  filter: blur(4px);
+  user-select: none;
+  margin-bottom: 18px;
+  pointer-events: none;
+}
+.price-tag {
+  text-align: center;
+  margin-bottom: 16px;
+}
+.price-main {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 36px;
+  font-weight: 700;
+  color: var(--rose);
+}
+.price-main sup { font-size: 18px; vertical-align: top; margin-top: 8px; display: inline-block; }
+.price-note { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+.divider-or {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 0;
+}
+.divider-or span { font-size: 12px; color: var(--muted); white-space: nowrap; }
+.divider-or::before, .divider-or::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+/* ── 底部提示 ── */
+.footer-note {
+  font-size: 11px;
+  color: #c4b0b8;
+  text-align: center;
+  margin-top: 28px;
+  line-height: 1.8;
+  padding: 0 40px;
+}
+
+/* ── 流量钩子计数 ── */
+.social-proof {
+  width: calc(100% - 40px);
+  max-width: 480px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+  padding: 12px 16px;
+  background: var(--rose-pale);
+  border-radius: 10px;
+  border: 1px solid var(--rose-light);
+}
+.social-proof .dot-row { display: flex; gap: 3px; }
+.social-proof .dot {
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  background: var(--rose-light);
+  border: 2px solid #fff;
+  margin-left: -6px;
+}
+.social-proof .dot:first-child { margin-left: 0; }
+.social-proof p { font-size: 12px; color: var(--rose); line-height: 1.5; }
+.social-proof p strong { font-weight: 500; }
+
+/* ── 付费成功 ── */
+.success-icon {
+  width: 64px; height: 64px;
+  background: var(--rose);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  margin: 40px auto 20px;
+  font-size: 28px;
+}
+</style>
+<script charset="UTF-8" id="LA_COLLECT" src="//sdk.51.la/js-sdk-pro.min.js"></script>
+<script>LA.init({id:"3PObkOmmoulprAwX",ck:"3PObkOmmoulprAwX"})</script>
+</head>
+<body>
+
+<!-- ══════════ 屏幕1：输入 ══════════ -->
+<div class="screen active" id="screen-input">
+  <div class="hero-band">
+    <div class="eyebrow">情感解读</div>
+    <h1>Ta到底<em>什么意思</em></h1>
+    <p class="sub">把你们的对话发过来<br>我告诉你 Ta 心里在想什么</p>
+    <div class="deco-line"></div>
+  </div>
+
+  <div class="social-proof">
+    <div class="dot-row">
+      <div class="dot" style="background:#e8a0ad"></div>
+      <div class="dot" style="background:#c8516a"></div>
+      <div class="dot" style="background:#8a7a82"></div>
+      <div class="dot" style="background:#e8a0ad"></div>
+    </div>
+    <p><strong>今天已有 2,847 人</strong>解开了心里的疑惑</p>
+  </div>
+
+  <div class="card">
+    <div class="input-label"><strong>粘贴对话截图内容</strong>，或者直接说说发生了什么</div>
+    <textarea id="user-input" placeholder='比如："他突然发了个"哦"就不说话了，我不知道他是生气了还是没事……"
+
+或者直接复制你们的聊天记录' maxlength="600"></textarea>
+    <div class="char-count"><span id="char-num">0</span> / 600</div>
+    <button class="btn-primary" onclick="submitInput()">解读 Ta 的意思 →</button>
+  </div>
+
+  <p class="footer-note">已解读 50万+ 条暧昧消息<br>不收集任何个人信息，阅后即焚</p>
+</div>
+
+<!-- ══════════ 屏幕2：加载 ══════════ -->
+<div class="screen" id="screen-loading">
+  <div class="loading-inner">
+    <div class="pulse-ring"></div>
+    <p class="loading-text">正在解读 Ta 的心思</p>
+    <p class="loading-sub" id="loading-sub-text">分析语言模式中…</p>
+  </div>
+</div>
+
+<!-- ══════════ 屏幕3：结果 ══════════ -->
+<div class="screen" id="screen-result">
+  <div class="hero-band" style="padding-bottom:28px">
+    <div class="eyebrow">解读完成</div>
+    <h1 style="font-size:24px" id="result-headline">Ta 在等你主动</h1>
+    <p class="sub" id="result-sub">但 Ta 不想显得太主动</p>
+  </div>
+
+  <div class="card">
+    <div class="result-tag">AI 情感信号</div>
+    <div class="result-verdict" id="result-verdict-text">加载中…</div>
+    <div class="result-body" id="result-body-text">加载中…</div>
+  </div>
+
+  <div class="card" style="padding:0; overflow:hidden">
+    <div style="padding:16px 20px 12px; border-bottom:1px solid var(--border)">
+      <div style="font-size:12px;color:var(--muted);letter-spacing:1px">情感信号检测</div>
+    </div>
+    <div style="padding:4px 20px 8px">
+      <div class="signal-row">
+        <span class="signal-label">兴趣程度</span>
+        <span class="signal-val warm" id="sig-interest">—</span>
+      </div>
+      <div class="signal-row">
+        <span class="signal-label">主动意愿</span>
+        <span class="signal-val" id="sig-initiative">—</span>
+      </div>
+      <div class="signal-row">
+        <span class="signal-label">情绪状态</span>
+        <span class="signal-val" id="sig-mood">—</span>
+      </div>
+      <div class="signal-row">
+        <span class="signal-label">当前关系温度</span>
+        <span class="signal-val warm" id="sig-temp">—</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 锁定深度分析 -->
+  <div class="lock-card">
+    <div class="lock-header">
+      <div class="lock-icon">🔒</div>
+      <h3>Ta 对你的真实态度分析</h3>
+      <p>包含：Ta 为什么这样说 · 你们现在是什么关系 · 你下一句怎么回最合适</p>
+    </div>
+    <div class="lock-body">
+      <div class="lock-preview">
+        Ta 说这句话的时候其实是想……而你的回复让 Ta 感受到了……
+        从对话节奏来看，Ta 对你的态度是……
+        建议你接下来……这样可以让关系往……方向发展……
+      </div>
+      <div class="price-tag">
+        <div class="price-main"><sup>¥</sup>9<span style="font-size:20px;font-family:sans-serif">.9</span></div>
+        <div class="price-note">一次性解锁 · 永久查看</div>
+      </div>
+      <button class="btn-primary rose" onclick="goPay()">解锁完整分析 →</button>
+      <div class="divider-or"><span>或者</span></div>
+      <button class="btn-ghost" onclick="goShare()">免费分享给 3 个朋友解锁</button>
+    </div>
+  </div>
+
+  <p class="footer-note">解锁后可查看完整分析报告<br>支持微信支付 · 购买即解锁</p>
+</div>
+
+<!-- ══════════ 屏幕4：分享解锁 ══════════ -->
+<div class="screen" id="screen-share">
+  <div style="height:60px"></div>
+  <div class="card" style="text-align:center">
+    <div style="font-size:40px;margin-bottom:16px">💌</div>
+    <h2 style="font-family:'Noto Serif SC',serif;font-size:20px;margin-bottom:10px">分享给 3 个朋友</h2>
+    <p style="font-size:13px;color:var(--muted);line-height:1.8">把这个页面分享给 3 个朋友<br>Ta们打开后，你的完整分析自动解锁</p>
+    <div style="margin:24px 0 8px;padding:16px;background:var(--rose-pale);border-radius:10px;font-size:13px;color:var(--rose);line-height:1.7">
+      已分享：<strong id="share-count">0</strong> / 3 人
+    </div>
+    <button class="btn-primary" onclick="simulateShare()">复制分享链接</button>
+    <button class="btn-ghost" onclick="goPay()">算了，我直接付 ¥9.9</button>
+  </div>
+</div>
+
+<!-- ══════════ 屏幕5：支付 ══════════ -->
+<div class="screen" id="screen-pay">
+  <div style="height:40px"></div>
+  <div class="card" style="text-align:center">
+    <div style="font-size:13px;color:var(--muted);margin-bottom:6px">解锁完整分析报告</div>
+    <div class="price-main" style="margin:8px 0"><sup style="font-size:18px;vertical-align:top;margin-top:8px;display:inline-block">¥</sup>9<span style="font-size:24px;font-family:sans-serif">.9</span></div>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:24px">一次性付费 · 永久查看</p>
+
+    <div style="background:var(--rose-pale);border-radius:12px;padding:16px;text-align:left;margin-bottom:20px">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:10px;letter-spacing:1px">解锁后你将获得</div>
+      <div style="font-size:13px;line-height:2;color:#4a3840">
+        ✓ &nbsp;Ta 说这句话背后的真实想法<br>
+        ✓ &nbsp;你们当前关系的准确定位<br>
+        ✓ &nbsp;3 条专属回复话术（直接复制用）<br>
+        ✓ &nbsp;下一步行动建议
+      </div>
+    </div>
+
+    <div style="border:1.5px solid var(--border);border-radius:10px;padding:14px;margin-bottom:16px">
+      <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=wxpay://demo" 
+           alt="微信支付二维码" 
+           style="width:120px;height:120px;display:block;margin:0 auto 10px;border-radius:6px;background:#f0f0f0"
+           onerror="this.style.background='#f0f0f0';this.alt='（演示二维码位置）'">
+      <p style="font-size:12px;color:var(--muted)">微信扫码支付</p>
+      <p style="font-size:13px;color:var(--ink);margin-top:6px">或添加微信：<strong>liqikun_qqwwee</strong></p>
+    </div>
+
+    <button class="btn-primary rose" onclick="goUnlocked()">我已支付，查看分析 →</button>
+  </div>
+</div>
+
+<!-- ══════════ 屏幕6：解锁内容 ══════════ -->
+<div class="screen" id="screen-unlocked">
+  <div class="hero-band" style="padding-bottom:28px">
+    <div class="eyebrow">完整分析报告</div>
+    <h1 style="font-size:22px">Ta 的真实态度</h1>
+  </div>
+
+  <div class="card">
+    <div class="result-tag" style="background:#e8f5ee;color:#2d7a4a">已解锁</div>
+    <div style="font-size:14px;line-height:1.95;color:#4a3840" id="unlocked-content">加载中…</div>
+  </div>
+
+  <div class="card">
+    <div style="font-size:12px;color:var(--muted);letter-spacing:1px;margin-bottom:14px">专属回复话术</div>
+    <div id="reply-suggestions"></div>
+  </div>
+
+  <div class="card" style="text-align:center">
+    <p style="font-size:13px;color:var(--muted);line-height:1.8;margin-bottom:16px">你的朋友也有这样的困惑吗？<br>分享给 Ta，帮 Ta 也解开心结</p>
+    <button class="btn-primary" onclick="alert('复制链接成功！')">分享给朋友</button>
+  </div>
+
+  <p class="footer-note">本分析基于 AI 情感模型<br>仅供参考，祝你们越来越好 ❤️</p>
+</div>
+
+<script>
+const textarea = document.getElementById('user-input');
+const charNum = document.getElementById('char-num');
+
+textarea.addEventListener('input', () => {
+  charNum.textContent = textarea.value.length;
+});
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => {
+    s.classList.remove('active');
+    s.style.display = 'none';
+  });
+  const el = document.getElementById(id);
+  el.style.display = 'flex';
+  setTimeout(() => el.classList.add('active'), 10);
+  window.scrollTo(0, 0);
+}
+
+const loadingMessages = [
+  '分析语言模式中…',
+  '检测情感信号…',
+  '解读潜台词…',
+  '生成专属报告…'
+];
+
+async function submitInput() {
+  const input = textarea.value.trim();
+  if (!input || input.length < 10) {
+    textarea.style.borderColor = 'var(--rose)';
+    textarea.placeholder = '请至少描述一下发生了什么～';
+    textarea.focus();
+    return;
+  }
+  showScreen('screen-loading');
+
+  let i = 0;
+  const subEl = document.getElementById('loading-sub-text');
+  const interval = setInterval(() => {
+    subEl.textContent = loadingMessages[i % loadingMessages.length];
+    i++;
+  }, 900);
+
+  try {
+    // ← 部署Worker后把这个地址换成你的
+    const WORKER_URL = 'https://换成你的名字.workers.dev';
+    const response = await fetch(WORKER_URL + '/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ input })
+    });
+
+    clearInterval(interval);
+    const data = await response.json();
+    if (data.ok && data.result) {
+      renderResult(data.result);
+    } else {
+      renderResult(getFallback(input));
+    }
+  } catch (e) {
+    clearInterval(interval);
+    // 降级：用本地示例
+    renderResult(getFallback(input));
+  }
+}
+
+function getFallback(input) {
+  return {
+    headline: "Ta 在等你先开口",
+    sub: "但 Ta 不想显得太主动",
+    verdict: "Ta 没有消失，只是在观望。那个"哦"不是冷漠，是在等你接下去说点什么。",
+    body: "发一个字就不说话，往往不是真的没话说，而是在等你来救这段对话。Ta 其实在在意你的反应——如果 Ta 真的不感兴趣，连"哦"都不会回。",
+    signals: {
+      interest: "中等偏上", interest_class: "warm",
+      initiative: "等你先动", initiative_class: "neutral",
+      mood: "若有所思", mood_class: "neutral",
+      temp: "微热升温中", temp_class: "warm"
+    },
+    unlocked_content: "Ta 用一个"哦"结束对话，看起来冷淡，实际上是一种试探——Ta 想看你会不会追着问或者继续聊。这说明 Ta 对你是有一定在意的，只是还没决定要不要主动展开。\n\n从关系状态来看，你们现在处于暧昧初期，互相都有点感觉，但谁也不敢先捅破那层窗户纸。Ta 用这种"冷"来保持主动权，其实是在等你给 Ta 一个可以顺着往下说的理由。\n\n下一步建议：不要干等着，也不要问"你怎么了"这种压迫感的话。给 Ta 一个轻松的话头，或者发一个只有 Ta 能看懂的梗，让 Ta 忍不住回复。主动，但要显得随意。",
+    replies: [
+      "哈哈你是困了还是不想理我？那我明天再来烦你",
+      "（发一个你们都懂的表情包，不说话）",
+      "好，那你先去忙，等你有空了记得找我"
+    ]
+  };
+}
+
+function renderResult(r) {
+  document.getElementById('result-headline').textContent = r.headline || 'Ta 的心思';
+  document.getElementById('result-sub').textContent = r.sub || '';
+  document.getElementById('result-verdict-text').innerHTML = r.verdict || '';
+  document.getElementById('result-body-text').textContent = r.body || '';
+
+  const s = r.signals || {};
+  setSignal('sig-interest', s.interest, s.interest_class);
+  setSignal('sig-initiative', s.initiative, s.initiative_class);
+  setSignal('sig-mood', s.mood, s.mood_class);
+  setSignal('sig-temp', s.temp, s.temp_class);
+
+  window._result = r;
+  showScreen('screen-result');
+}
+
+function setSignal(id, val, cls) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = val || '—';
+  el.className = 'signal-val ' + (cls || 'neutral');
+}
+
+let shareCount = 0;
+function goShare() {
+  showScreen('screen-share');
+}
+
+function simulateShare() {
+  if (shareCount < 3) {
+    shareCount++;
+    document.getElementById('share-count').textContent = shareCount;
+    if (shareCount >= 3) {
+      setTimeout(() => goUnlocked(), 800);
+    } else {
+      alert(`已复制！还需要 ${3 - shareCount} 个朋友打开`);
+    }
+  }
+}
+
+function goPay() {
+  showScreen('screen-pay');
+}
+
+function goUnlocked() {
+  const r = window._result || getFallback('');
+  document.getElementById('unlocked-content').innerHTML =
+    (r.unlocked_content || '').replace(/\n/g, '<br><br>');
+
+  const rContainer = document.getElementById('reply-suggestions');
+  rContainer.innerHTML = '';
+  (r.replies || []).forEach((text, i) => {
+    const div = document.createElement('div');
+    div.style.cssText = 'background:var(--rose-pale);border:1px solid var(--rose-light);border-radius:10px;padding:12px 14px;margin-bottom:10px;font-size:13px;color:#4a3840;line-height:1.7;cursor:pointer';
+    div.innerHTML = `<span style="font-size:11px;color:var(--rose);display:block;margin-bottom:4px">话术 ${i+1}</span>${text}`;
+    div.onclick = () => {
+      navigator.clipboard?.writeText(text).catch(()=>{});
+      div.style.background = '#e8f5ee';
+      div.style.borderColor = '#2d7a4a';
+      setTimeout(() => {
+        div.style.background = 'var(--rose-pale)';
+        div.style.borderColor = 'var(--rose-light)';
+      }, 1200);
+    };
+    rContainer.appendChild(div);
+  });
+
+  showScreen('screen-unlocked');
+}
+</script>
+</body>
+</html>
